@@ -32,7 +32,6 @@ public class AdminBookingController {
         return ResponseEntity.ok(bookingService.checkAndExpireBookings(raw));
     }
 
-    // ĐÃ THÊM: API Lấy danh sách toàn bộ người chơi của cả 2 sân trong NGÀY HÔM NAY
     @GetMapping("/today")
     public ResponseEntity<List<Booking>> getTodaySchedules() {
         List<Booking> raw = bookingRepository.findByBookingDate(LocalDate.now());
@@ -62,7 +61,6 @@ public class AdminBookingController {
         booking.setIsAdminAdded(true);
         booking.setCreatedAt(LocalDateTime.now());
 
-        // ĐÃ XỬ LÝ: Rút gọn mã Admin thành chuẩn ADMIN_1, ADMIN_2...
         long adminCount = bookingRepository.countByIsAdminAddedTrue() + 1;
         String code = "ADMIN_" + adminCount;
         while(bookingRepository.existsByBookingCode(code)) {

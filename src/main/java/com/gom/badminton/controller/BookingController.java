@@ -25,7 +25,7 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
-    // Chuỗi mã bảo mật tự đặt để cấu hình trùng khớp bên phía cổng SePay
+    // Chìa khóa bảo mật Webhook
     private static final String SEPAY_API_KEY = "GOM_SUPER_SECRET_TOKEN_12345";
 
     @PostMapping
@@ -85,13 +85,11 @@ public class BookingController {
         return ResponseEntity.ok(b);
     }
 
-    // API tiếp nhận cổng Webhook tự động với cơ chế kiểm thử Header Security
     @PostMapping("/webhook")
     public ResponseEntity<?> handleBankWebhook(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody WebhookRequest request) {
 
-        // Xác thực xem chuỗi Token bảo mật gửi từ SePay có trùng khớp không
         if (authHeader == null || !authHeader.contains(SEPAY_API_KEY)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Cảnh báo: Yêu cầu truy cập trái phép!");
         }

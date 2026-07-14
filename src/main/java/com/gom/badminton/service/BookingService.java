@@ -32,7 +32,8 @@ public class BookingService {
 
         boolean isMale = "MALE".equalsIgnoreCase(request.getGender());
         BigDecimal total = isMale ? new BigDecimal("60000") : new BigDecimal("50000");
-        //BigDecimal deposit = total.divide(new BigDecimal("2"));
+
+        // Cấu hình cọc test đồng bộ với giao diện
         BigDecimal deposit = isMale ? new BigDecimal("3000") : new BigDecimal("2000");
 
         Booking booking = new Booking();
@@ -83,6 +84,7 @@ public class BookingService {
             return;
         }
 
+        // Bóc tách mã hoàn hảo không dính rác ngân hàng
         String afterGom = content.toUpperCase().replaceAll(".*GOM\\s*", "").trim();
         String bookingCode = afterGom.split("\\s+")[0];
 
