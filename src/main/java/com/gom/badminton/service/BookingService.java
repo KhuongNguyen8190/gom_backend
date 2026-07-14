@@ -30,10 +30,19 @@ public class BookingService {
             throw new IllegalStateException("Sân số " + request.getCourtNumber() + " vào ngày này đã đầy!");
         }
 
+        // TÍNH NĂNG MỚI: Xóa đơn PENDING cũ cùng SĐT, cùng ngày, cùng sân để tránh rác Database
+        List<Booking> oldPendings = bookingRepository.findByPhoneNumberAndBookingDateAndCourtNumberAndPaymentStatus(
+                request.getPhoneNumber().trim(),
+                request.getBookingDate(),
+                request.getCourtNumber(),
+                "PENDING"
+        );
+        if (!oldPendings.isEmpty()) {
+            bookingRepository.deleteAll(oldPendings);
+        }
+
         boolean isMale = "MALE".equalsIgnoreCase(request.getGender());
         BigDecimal total = isMale ? new BigDecimal("60000") : new BigDecimal("50000");
-
-        // Cấu hình cọc test đồng bộ với giao diện
         BigDecimal deposit = isMale ? new BigDecimal("3000") : new BigDecimal("2000");
 
         Booking booking = new Booking();
@@ -84,7 +93,6 @@ public class BookingService {
             return;
         }
 
-        // Bóc tách mã hoàn hảo không dính rác ngân hàng
         String afterGom = content.toUpperCase().replaceAll(".*GOM\\s*", "").trim();
         String bookingCode = afterGom.split("\\s+")[0];
 

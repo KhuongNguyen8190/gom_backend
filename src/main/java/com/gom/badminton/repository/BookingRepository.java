@@ -19,6 +19,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByBookingDate(LocalDate bookingDate);
 
+    // Lệnh truy vấn TÌM ĐƠN PENDING CŨ để xóa
+    List<Booking> findByPhoneNumberAndBookingDateAndCourtNumberAndPaymentStatus(
+            String phoneNumber, LocalDate bookingDate, Integer courtNumber, String paymentStatus);
+
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.bookingDate = :date AND b.courtNumber = :courtNumber " +
             "AND b.paymentStatus IN ('PAID', 'ADMIN_ADDED')")
     long countActiveSlots(@Param("date") LocalDate date, @Param("courtNumber") Integer courtNumber);

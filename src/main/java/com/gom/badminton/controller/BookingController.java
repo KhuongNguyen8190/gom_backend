@@ -25,7 +25,6 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
-    // Chìa khóa bảo mật Webhook
     private static final String SEPAY_API_KEY = "GOM_SUPER_SECRET_TOKEN_12345";
 
     @PostMapping
@@ -64,6 +63,7 @@ public class BookingController {
             m.setTotalPrice(b.getTotalPrice());
             m.setDepositAmount(b.getDepositAmount());
             m.setPaymentStatus(b.getPaymentStatus());
+            m.setCreatedAt(b.getCreatedAt()); // THÊM TRƯỜNG NÀY ĐỂ FRONTEND ĐẾM NGƯỢC
             return m;
         }).collect(Collectors.toList());
 
