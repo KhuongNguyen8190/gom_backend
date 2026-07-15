@@ -19,22 +19,23 @@ public class BookingService {
     @Autowired
     private BookingRepository bookingRepository;
 
+    // LUỒNG 1: Dành cho Khách hàng đăng ký (Bắt buộc cọc QR)
     @Transactional
     public Booking createCustomerBooking(Booking request) {
         if (request.getBookingDate().getDayOfWeek() == DayOfWeek.MONDAY) {
             throw new IllegalArgumentException("Hệ thống đóng cửa vào Thứ 2.");
         }
 
-        long activeCount = bookingRepository.countActiveSlots(request.getBookingDate(), request.getCourtNumber());
-        if (activeCount >= 8) {
-            throw new IllegalStateException("Sân số " + request.getCourtNumber() + " vào ngày này đã đầy!");
+        // Khống chế sĩ số tổng gộp cả ngày là 16 slot chơi
+        long activeCount = bookingRepository.countActiveSlots(request.getBookingDate());
+        if (activeCount >= 16) {
+            throw new IllegalStateException("Lịch chơi vào ngày này đã đầy (Tối đa 16 người)!");
         }
 
-        // TÍNH NĂNG MỚI: Xóa đơn PENDING cũ cùng SĐT, cùng ngày, cùng sân để tránh rác Database
-        List<Booking> oldPendings = bookingRepository.findByPhoneNumberAndBookingDateAndCourtNumberAndPaymentStatus(
+        // Xóa các yêu cầu chờ thanh toán (PENDING) cũ của số điện thoại này trong cùng ngày
+        List<Booking> oldPendings = bookingRepository.findByPhoneNumberAndBookingDateAndPaymentStatus(
                 request.getPhoneNumber().trim(),
                 request.getBookingDate(),
-                request.getCourtNumber(),
                 "PENDING"
         );
         if (!oldPendings.isEmpty()) {
@@ -50,7 +51,6 @@ public class BookingService {
         booking.setPhoneNumber(request.getPhoneNumber().trim());
         booking.setGender(request.getGender().toUpperCase());
         booking.setBookingDate(request.getBookingDate());
-        booking.setCourtNumber(request.getCourtNumber());
         booking.setSessionTime("05:30 - 07:00");
         booking.setTotalPrice(total);
         booking.setDepositAmount(deposit);
@@ -58,12 +58,55 @@ public class BookingService {
         booking.setIsAdminAdded(false);
         booking.setCreatedAt(LocalDateTime.now());
 
+        // Sinh mã code tinh gọn: Bỏ ký tự phân tách sân (Ví dụ: T3819 hoặc CN819)
         String dayStr = getDayString(request.getBookingDate().getDayOfWeek());
         String phone = request.getPhoneNumber().trim();
         String last3Digits = phone.substring(phone.length() - Math.min(phone.length(), 3));
 
         String prefix = "CN".equals(dayStr) ? "" : "T";
-        String code = prefix + dayStr + "S" + request.getCourtNumber() + last3Digits;
+        String code = prefix + dayStr + last3Digits;
+
+        while (bookingRepository.existsByBookingCode(code.toUpperCase())) {
+            code = "T" + code;
+        }
+
+        booking.setBookingCode(code.toUpperCase());
+        return bookingRepository.save(booking);
+    }
+
+    // LUỒNG 2: Dành cho Admin ép thêm người quen trực tiếp (MIỄN CỌC - GIỮ CHỖ VĨNH VIỄN)
+    @Transactional
+    public Booking adminForceAddPlayer(Booking request) {
+        if (request.getBookingDate().getDayOfWeek() == DayOfWeek.MONDAY) {
+            throw new IllegalArgumentException("Hệ thống đóng cửa vào Thứ 2.");
+        }
+
+        long activeCount = bookingRepository.countActiveSlots(request.getBookingDate());
+        if (activeCount >= 16) {
+            throw new IllegalStateException("Lịch chơi vào ngày này đã đầy (Tối đa 16 người)!");
+        }
+
+        boolean isMale = "MALE".equalsIgnoreCase(request.getGender());
+        BigDecimal total = isMale ? new BigDecimal("60000") : new BigDecimal("50000");
+
+        Booking booking = new Booking();
+        booking.setFullName(request.getFullName().trim());
+        booking.setPhoneNumber(request.getPhoneNumber().trim());
+        booking.setGender(request.getGender().toUpperCase());
+        booking.setBookingDate(request.getBookingDate());
+        booking.setSessionTime("05:30 - 07:00");
+        booking.setTotalPrice(total);
+        booking.setDepositAmount(BigDecimal.ZERO); // Tiền cọc bằng 0
+        booking.setPaymentStatus("ADMIN_ADDED");   // Duyệt thẳng trạng thái VIP
+        booking.setIsAdminAdded(true);             // Gắn cờ bảo vệ đơn hàng
+        booking.setCreatedAt(LocalDateTime.now());
+
+        String dayStr = getDayString(request.getBookingDate().getDayOfWeek());
+        String phone = request.getPhoneNumber().trim();
+        String last3Digits = phone.substring(phone.length() - Math.min(phone.length(), 3));
+
+        String prefix = "CN".equals(dayStr) ? "" : "T";
+        String code = "ADM" + prefix + dayStr + last3Digits; // Mã đặc quyền dành cho admin thêm
 
         while (bookingRepository.existsByBookingCode(code.toUpperCase())) {
             code = "T" + code;
@@ -76,8 +119,11 @@ public class BookingService {
     @Transactional
     public List<Booking> checkAndExpireBookings(List<Booking> list) {
         LocalDateTime now = LocalDateTime.now();
+        // Chỉ quét và tự động hủy các đơn PENDING từ phía khách hàng quá 5 phút
         List<Booking> expiredBookings = list.stream()
-                .filter(b -> "PENDING".equals(b.getPaymentStatus()) && b.getCreatedAt().plusMinutes(5).isBefore(now))
+                .filter(b -> "PENDING".equals(b.getPaymentStatus())
+                        && !b.getIsAdminAdded()
+                        && b.getCreatedAt().plusMinutes(5).isBefore(now))
                 .collect(Collectors.toList());
 
         if (!expiredBookings.isEmpty()) {
@@ -111,6 +157,16 @@ public class BookingService {
                 }
             }
         }
+    }
+
+    @Transactional
+    public void cancelBookingByAdmin(Long id) {
+        bookingRepository.deleteById(id);
+    }
+
+    @Transactional
+    public List<Booking> getTodaySchedules() {
+        return bookingRepository.findByBookingDate(LocalDateTime.now().toLocalDate());
     }
 
     private String getDayString(DayOfWeek dayOfWeek) {

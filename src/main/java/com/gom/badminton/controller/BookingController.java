@@ -5,10 +5,12 @@ import com.gom.badminton.dto.WebhookRequest;
 import com.gom.badminton.repository.BookingRepository;
 import com.gom.badminton.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +39,41 @@ public class BookingController {
         }
     }
 
+    // ĐÃ THÊM: Endpoint xử lý riêng cho Admin ép lịch (Bỏ qua cổng thanh toán cọc)
+    @PostMapping("/admin-add")
+    public ResponseEntity<?> adminAddPlayer(@RequestBody Booking request) {
+        try {
+            Booking result = bookingService.adminForceAddPlayer(request);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ĐÃ SỬA: Lấy danh sách lịch tương lai theo ngày (Đã lược bỏ hoàn toàn tham số courtNumber)
+    @GetMapping("/admin/schedules")
+    public ResponseEntity<?> getAdminSchedules(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<Booking> data = bookingRepository.findByBookingDate(date);
+        return ResponseEntity.ok(data);
+    }
+
+    // ĐÃ SỬA: Lấy danh sách tổng hợp lịch hôm nay
+    @GetMapping("/admin/today")
+    public ResponseEntity<?> getTodaySchedules() {
+        List<Booking> data = bookingService.getTodaySchedules();
+        return ResponseEntity.ok(data);
+    }
+
+    @DeleteMapping("/admin/cancel/{id}")
+    public ResponseEntity<?> cancelBookingByAdmin(@PathVariable Long id) {
+        try {
+            bookingService.cancelBookingByAdmin(id);
+            return ResponseEntity.ok("{\"message\":\"Trục xuất thành viên thành công.\"}");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/lookup")
     public ResponseEntity<?> lookupByPhone(@RequestParam String phone) {
         if (phone == null || phone.trim().isEmpty()) {
@@ -47,7 +84,7 @@ public class BookingController {
         List<Booking> verifiedList = bookingService.checkAndExpireBookings(rawList);
 
         if (verifiedList.isEmpty()) {
-            return ResponseEntity.status(404).body("Không tìm thấy dữ liệu.");
+            return ResponseEntity.status(404).body("Không tìm thấy dữ liệu lịch sử.");
         }
 
         List<Booking> masked = verifiedList.stream().map(b -> {
@@ -58,12 +95,11 @@ public class BookingController {
             m.setPhoneNumber(b.getPhoneNumber().substring(0, 4) + "***" + b.getPhoneNumber().substring(b.getPhoneNumber().length() - 3));
             m.setGender(b.getGender());
             m.setBookingDate(b.getBookingDate());
-            m.setCourtNumber(b.getCourtNumber());
             m.setSessionTime(b.getSessionTime());
             m.setTotalPrice(b.getTotalPrice());
             m.setDepositAmount(b.getDepositAmount());
             m.setPaymentStatus(b.getPaymentStatus());
-            m.setCreatedAt(b.getCreatedAt()); // THÊM TRƯỜNG NÀY ĐỂ FRONTEND ĐẾM NGƯỢC
+            m.setCreatedAt(b.getCreatedAt());
             return m;
         }).collect(Collectors.toList());
 
@@ -91,12 +127,12 @@ public class BookingController {
             @RequestBody WebhookRequest request) {
 
         if (authHeader == null || !authHeader.contains(SEPAY_API_KEY)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Cảnh báo: Yêu cầu truy cập trái phép!");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Cảnh báo bảo mật!");
         }
 
         try {
             bookingService.processPaymentWebhook(request.getContent(), request.getTransferAmount());
-            return ResponseEntity.ok("Xử lý webhook khớp lệnh thành công.");
+            return ResponseEntity.ok("Xử lý Webhook thành công.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

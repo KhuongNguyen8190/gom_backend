@@ -30,9 +30,6 @@ public class Booking {
     @Column(name = "session_time")
     private String sessionTime = "05:30 - 07:00";
 
-    @Column(name = "court_number", nullable = false)
-    private Integer courtNumber;
-
     @Column(name = "total_price", nullable = false)
     private BigDecimal totalPrice;
 
@@ -48,31 +45,39 @@ public class Booking {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Getters và Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
     public String getBookingCode() { return bookingCode; }
     public void setBookingCode(String bookingCode) { this.bookingCode = bookingCode; }
+
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
+
     public LocalDate getBookingDate() { return bookingDate; }
     public void setBookingDate(LocalDate bookingDate) { this.bookingDate = bookingDate; }
+
     public String getSessionTime() { return sessionTime; }
     public void setSessionTime(String sessionTime) { this.sessionTime = sessionTime; }
-    public Integer getCourtNumber() { return courtNumber; }
-    public void setCourtNumber(Integer courtNumber) { this.courtNumber = courtNumber; }
+
     public BigDecimal getTotalPrice() { return totalPrice; }
     public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
+
     public BigDecimal getDepositAmount() { return depositAmount; }
     public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
+
     public String getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+
     public Boolean getIsAdminAdded() { return isAdminAdded; }
     public void setIsAdminAdded(Boolean adminAdded) { isAdminAdded = adminAdded; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

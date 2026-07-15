@@ -15,21 +15,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByPhoneNumberOrderByBookingDateDesc(String phoneNumber);
 
-    List<Booking> findByBookingDateAndCourtNumber(LocalDate bookingDate, Integer courtNumber);
-
+    // Lọc danh sách người chơi cố định theo ngày (Không chia sân)
     List<Booking> findByBookingDate(LocalDate bookingDate);
 
-    // Lệnh truy vấn TÌM ĐƠN PENDING CŨ để xóa
-    List<Booking> findByPhoneNumberAndBookingDateAndCourtNumberAndPaymentStatus(
-            String phoneNumber, LocalDate bookingDate, Integer courtNumber, String paymentStatus);
+    // Tìm các đơn PENDING trùng ngày để dọn dẹp
+    List<Booking> findByPhoneNumberAndBookingDateAndPaymentStatus(
+            String phoneNumber, LocalDate bookingDate, String paymentStatus);
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE b.bookingDate = :date AND b.courtNumber = :courtNumber " +
+    // Đếm tổng số slot đã khóa chỗ thành công trong ngày (Tối đa 16 người)
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.bookingDate = :date " +
             "AND b.paymentStatus IN ('PAID', 'ADMIN_ADDED')")
-    long countActiveSlots(@Param("date") LocalDate date, @Param("courtNumber") Integer courtNumber);
+    long countActiveSlots(@Param("date") LocalDate date);
 
     long countByIsAdminAddedTrue();
-
-    Optional<Booking> findFirstByPhoneNumberAndPaymentStatusOrderByCreatedAtDesc(String phoneNumber, String paymentStatus);
 
     Optional<Booking> findByBookingCode(String bookingCode);
 
