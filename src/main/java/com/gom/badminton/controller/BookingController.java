@@ -39,7 +39,6 @@ public class BookingController {
         }
     }
 
-    // ĐÃ THÊM: Endpoint xử lý riêng cho Admin ép lịch (Bỏ qua cổng thanh toán cọc)
     @PostMapping("/admin-add")
     public ResponseEntity<?> adminAddPlayer(@RequestBody Booking request) {
         try {
@@ -50,14 +49,12 @@ public class BookingController {
         }
     }
 
-    // ĐÃ SỬA: Lấy danh sách lịch tương lai theo ngày (Đã lược bỏ hoàn toàn tham số courtNumber)
     @GetMapping("/admin/schedules")
     public ResponseEntity<?> getAdminSchedules(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         List<Booking> data = bookingRepository.findByBookingDate(date);
         return ResponseEntity.ok(data);
     }
 
-    // ĐÃ SỬA: Lấy danh sách tổng hợp lịch hôm nay
     @GetMapping("/admin/today")
     public ResponseEntity<?> getTodaySchedules() {
         List<Booking> data = bookingService.getTodaySchedules();
@@ -74,17 +71,25 @@ public class BookingController {
         }
     }
 
+    // ==========================================
+    // LOGIC TRA CỨU MỚI: Ẩn lịch sử ngày hôm qua
+    // ==========================================
     @GetMapping("/lookup")
     public ResponseEntity<?> lookupByPhone(@RequestParam String phone) {
         if (phone == null || phone.trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Vui lòng nhập số điện thoại.");
         }
 
-        List<Booking> rawList = bookingRepository.findByPhoneNumberOrderByBookingDateDesc(phone.trim());
+        // Lấy ngày giờ hiện tại của hệ thống (Ví dụ: 16/07/2026)
+        LocalDate today = LocalDate.now();
+
+        // Chỉ lấy những đơn hàng có Date >= Today
+        List<Booking> rawList = bookingRepository.findByPhoneNumberAndBookingDateGreaterThanEqualOrderByBookingDateDesc(phone.trim(), today);
+
         List<Booking> verifiedList = bookingService.checkAndExpireBookings(rawList);
 
         if (verifiedList.isEmpty()) {
-            return ResponseEntity.status(404).body("Không tìm thấy dữ liệu lịch sử.");
+            return ResponseEntity.status(404).body("Không có lịch chơi nào trong hôm nay hoặc sắp tới.");
         }
 
         List<Booking> masked = verifiedList.stream().map(b -> {

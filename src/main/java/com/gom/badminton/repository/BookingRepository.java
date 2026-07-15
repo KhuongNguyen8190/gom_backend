@@ -13,16 +13,17 @@ import java.util.Optional;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    List<Booking> findByPhoneNumberOrderByBookingDateDesc(String phoneNumber);
+    // HÀM MỚI: Chỉ lấy lịch sử từ hôm nay trở đi (Lớn hơn hoặc bằng ngày hiện tại)
+    List<Booking> findByPhoneNumberAndBookingDateGreaterThanEqualOrderByBookingDateDesc(String phoneNumber, LocalDate bookingDate);
 
-    // Lọc danh sách người chơi cố định theo ngày (Không chia sân)
+    // Lọc danh sách người chơi cố định theo ngày
     List<Booking> findByBookingDate(LocalDate bookingDate);
 
     // Tìm các đơn PENDING trùng ngày để dọn dẹp
     List<Booking> findByPhoneNumberAndBookingDateAndPaymentStatus(
             String phoneNumber, LocalDate bookingDate, String paymentStatus);
 
-    // Đếm tổng số slot đã khóa chỗ thành công trong ngày (Tối đa 16 người)
+    // Đếm tổng số slot đã khóa chỗ thành công trong ngày
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.bookingDate = :date " +
             "AND b.paymentStatus IN ('PAID', 'ADMIN_ADDED')")
     long countActiveSlots(@Param("date") LocalDate date);
