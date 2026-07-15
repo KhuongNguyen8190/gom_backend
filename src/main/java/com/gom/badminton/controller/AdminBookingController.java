@@ -24,11 +24,11 @@ public class AdminBookingController {
     @Autowired
     private BookingService bookingService;
 
+    // ĐÃ SỬA: Xóa bỏ hoàn toàn courtNumber, chỉ tìm theo Ngày
     @GetMapping
     public ResponseEntity<List<Booking>> getAdminSchedules(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam("courtNumber") Integer courtNumber) {
-        List<Booking> raw = bookingRepository.findByBookingDateAndCourtNumber(date, courtNumber);
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<Booking> raw = bookingRepository.findByBookingDate(date);
         return ResponseEntity.ok(bookingService.checkAndExpireBookings(raw));
     }
 
@@ -38,11 +38,12 @@ public class AdminBookingController {
         return ResponseEntity.ok(bookingService.checkAndExpireBookings(raw));
     }
 
+    // ĐÃ SỬA: Bỏ courtNumber, nâng sĩ số lên 16 người
     @PostMapping("/force-add")
     public ResponseEntity<?> adminForceAddPlayer(@RequestBody Booking request) {
-        long activeCount = bookingRepository.countActiveSlots(request.getBookingDate(), request.getCourtNumber());
-        if (activeCount >= 8) {
-            return ResponseEntity.badRequest().body("Sân này đã lấp đầy tối đa 8 người!");
+        long activeCount = bookingRepository.countActiveSlots(request.getBookingDate());
+        if (activeCount >= 16) {
+            return ResponseEntity.badRequest().body("Lịch chơi vào ngày này đã đầy (Tối đa 16 người)!");
         }
 
         boolean isMale = "MALE".equalsIgnoreCase(request.getGender());
@@ -53,10 +54,10 @@ public class AdminBookingController {
         booking.setPhoneNumber(request.getPhoneNumber().trim());
         booking.setGender(request.getGender().toUpperCase());
         booking.setBookingDate(request.getBookingDate());
-        booking.setCourtNumber(request.getCourtNumber());
+        // Bỏ dòng booking.setCourtNumber(...)
         booking.setSessionTime("05:30 - 07:00");
         booking.setTotalPrice(price);
-        booking.setDepositAmount(BigDecimal.ZERO);
+        booking.setDepositAmount(BigDecimal.ZERO); // Miễn cọc
         booking.setPaymentStatus("ADMIN_ADDED");
         booking.setIsAdminAdded(true);
         booking.setCreatedAt(LocalDateTime.now());
